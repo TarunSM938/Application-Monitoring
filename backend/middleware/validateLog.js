@@ -1,4 +1,5 @@
 const { body, validationResult } = require('express-validator');
+const createHttpError = require('../utils/httpError');
 
 const validateLog = [
   body('api_name')
@@ -29,13 +30,14 @@ const validateLog = [
     .optional({ nullable: true })
     .isString().withMessage('device_info must be a string'),
 
+  body('trace_id')
+    .optional({ nullable: true })
+    .isString().withMessage('trace_id must be a string'),
+
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Validation failed',
-        details: errors.array(),
-      });
+      return next(createHttpError(400, 'Validation failed', errors.array()));
     }
     next();
   },

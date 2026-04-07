@@ -3,6 +3,10 @@ const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
 const { pool } = require("./db/connection");
+const asyncHandler = require("./utils/asyncHandler");
+const createHttpError = require("./utils/httpError");
+const notFound = require("./middleware/notFound");
+const errorHandler = require("./middleware/errorHandler");
 const logsRoutes = require("./routes/logs");
 const metricsRoutes = require("./routes/metrics");
 const alertsRoutes = require("./routes/alerts");
@@ -26,19 +30,21 @@ io.on("connection", (socket) => {
   console.log(`Socket connected: ${socket.id}`);
 });
 
-app.get('/health', async (req, res) => {
+app.get('/health', asyncHandler(async (req, res) => {
   try {
     await pool.query('SELECT 1');
     res.json({ status: 'ok', timestamp: new Date().toISOString(), db: 'connected' });
   } catch (err) {
-    res.status(500).json({ status: 'error', timestamp: new Date().toISOString(), db: 'disconnected' });
+    throw createHttpError(503, 'Database unavailable', { db: 'disconnected' });
   }
-});
+}));
 
 app.use('/api/logs', logsRoutes);
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use(notFound);
+app.use(errorHandler);
 
 server.listen(5000, () => {
   console.log("Server running on port 5000");

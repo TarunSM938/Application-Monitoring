@@ -1,21 +1,23 @@
 import { useState } from 'react'
-import { LayoutDashboard, BarChart2, ScrollText, Bell, Zap, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, BarChart2, ScrollText, Bell, Zap, ChevronRight, GitBranch } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Analytics from './pages/Analytics'
 import Logs from './pages/Logs'
 import Alerts from './pages/Alerts'
+import Traces from './pages/Traces'
 import './App.css'
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { id: 'analytics', label: 'Analytics', Icon: BarChart2 },
   { id: 'logs',      label: 'Logs',      Icon: ScrollText },
+  { id: 'traces',    label: 'Traces',    Icon: GitBranch },
   { id: 'alerts',    label: 'Alerts',    Icon: Bell },
 ]
 
 export default function App() {
   const [active, setActive] = useState('dashboard')
-  const Page = { dashboard: Dashboard, analytics: Analytics, logs: Logs, alerts: Alerts }[active]
+  const Page = { dashboard: Dashboard, analytics: Analytics, logs: Logs, traces: Traces, alerts: Alerts }[active]
 
   return (
     <div className="app-shell">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { RefreshCw, Download, Search, ScrollText, CheckCircle, AlertTriangle, XCircle, Clock } from 'lucide-react'
+import { RefreshCw, Download, Search, ScrollText, CheckCircle, AlertTriangle, XCircle, Clock, GitBranch } from 'lucide-react'
 import { socket } from '../socket'
 
 const API = 'http://localhost:5000'
@@ -53,7 +53,12 @@ export default function Logs() {
   }, [])
 
   const filtered = logs.filter((l) => {
-    const txt = search === '' || (l.api_name || '').toLowerCase().includes(search.toLowerCase())
+    const term = search.toLowerCase()
+    const txt =
+      search === '' ||
+      (l.api_name || '').toLowerCase().includes(term) ||
+      (l.trace_id || '').toLowerCase().includes(term)
+
     const st =
       statusF === 'error' ? !!l.error_message :
       statusF === 'slow' ? (l.response_time > 1000 && !l.error_message) :
@@ -62,8 +67,8 @@ export default function Logs() {
   })
 
   const exportCSV = () => {
-    const hdr = ['ID', 'Timestamp', 'API Name', 'Response Time (ms)', 'Status Code', 'Session ID', 'Device Info', 'Error Message']
-    const rows = filtered.map((l) => [l.id, l.timestamp, l.api_name, l.response_time ?? '', l.status_code ?? '', l.session_id ?? '', l.device_info ?? '', l.error_message ?? ''])
+    const hdr = ['ID', 'Timestamp', 'API Name', 'Trace ID', 'Response Time (ms)', 'Status Code', 'Session ID', 'Device Info', 'Error Message']
+    const rows = filtered.map((l) => [l.id, l.timestamp, l.api_name, l.trace_id ?? '', l.response_time ?? '', l.status_code ?? '', l.session_id ?? '', l.device_info ?? '', l.error_message ?? ''])
     const csv = [hdr, ...rows].map((r) => r.map((v) => `"${v}"`).join(',')).join('\n')
     const a = Object.assign(document.createElement('a'), {
       href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
@@ -103,10 +108,10 @@ export default function Logs() {
           <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
           <input
             className="input"
-            placeholder="Search API name..."
+            placeholder="Search API name or trace ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ paddingLeft: 32, width: 220 }}
+            style={{ paddingLeft: 32, width: 260 }}
           />
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
@@ -131,14 +136,14 @@ export default function Logs() {
         <table>
           <thead>
             <tr>
-              <th>ID</th><th>Timestamp</th><th>API Name</th>
+              <th>ID</th><th>Timestamp</th><th>API Name</th><th>Trace</th>
               <th>Response</th><th>Status Code</th><th>Session</th><th>Device</th><th>State</th><th>Error</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={10}>
                   <div className="empty">
                     <div className="empty-icon"><ScrollText size={20} /></div>
                     <p>No logs found. Make API calls from the Flutter app.</p>
@@ -154,6 +159,12 @@ export default function Logs() {
                     {log.timestamp ? new Date(log.timestamp).toLocaleString() : '—'}
                   </td>
                   <td style={{ color: 'var(--blue)', fontWeight: 600 }}>{log.api_name}</td>
+                  <td className="mono" style={{ color: 'var(--text2)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <GitBranch size={12} />
+                      {log.trace_id ?? '—'}
+                    </span>
+                  </td>
                   <td className="mono" style={{ color: log.response_time > 1000 ? 'var(--yellow)' : 'var(--green)', fontWeight: 600 }}>
                     {log.response_time != null ? `${log.response_time}ms` : '—'}
                   </td>

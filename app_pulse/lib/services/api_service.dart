@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 class ApiService {
   static final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
   static final String _sessionId = const Uuid().v4();
+  static final Uuid _uuid = const Uuid();
 
   static Future<String> _getDeviceInfo() async {
     try {
@@ -42,6 +43,7 @@ class ApiService {
   static Future<void> makeApiCall(String apiName) async {
     final startTime = DateTime.now();
     final deviceInfo = await _getDeviceInfo();
+    final traceId = _uuid.v4();
 
     try {
       if (apiName == "Error API") {
@@ -66,6 +68,7 @@ class ApiService {
         "timestamp": DateTime.now().toIso8601String(),
         "session_id": _sessionId,
         "device_info": deviceInfo,
+        "trace_id": traceId,
       };
 
       print(jsonEncode(logData));
@@ -86,6 +89,7 @@ class ApiService {
         "timestamp": DateTime.now().toIso8601String(),
         "session_id": _sessionId,
         "device_info": deviceInfo,
+        "trace_id": traceId,
       };
 
       print(jsonEncode(errorLog));
