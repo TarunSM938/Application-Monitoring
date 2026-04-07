@@ -9,7 +9,6 @@ class HomeScreen extends StatelessWidget {
   }
 
   void slowApiCall() async {
-    await Future.delayed(Duration(seconds: 3));
     await ApiService.makeApiCall("Slow API");
   }
 
