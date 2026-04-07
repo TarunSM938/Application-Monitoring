@@ -6,10 +6,6 @@ const getAlerts = async (req, res) => {
     const result = await pool.query(
       'SELECT * FROM alerts ORDER BY timestamp DESC'
     );
-    const io = req.app.get('io');
-if (io) {
-  io.emit('alert-resolved');
-}
 
     res.json({ alerts: result.rows });
   } catch (err) {
@@ -30,6 +26,11 @@ const resolveAlert = async (req, res) => {
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Alert not found" });
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('alert-resolved');
     }
 
     res.json({ message: "Alert resolved successfully", alert: result.rows[0] });

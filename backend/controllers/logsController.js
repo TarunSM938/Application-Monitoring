@@ -9,13 +9,15 @@ const createLog = async (req, res) => {
 
   try {
     await pool.query(
-      'INSERT INTO logs(api_name, response_time, status_code, error_message, timestamp) VALUES($1, $2, $3, $4, $5)',
+      'INSERT INTO logs(api_name, response_time, status_code, error_message, timestamp, session_id, device_info) VALUES($1, $2, $3, $4, $5, $6, $7)',
       [
         logData.api_name,
-        logData.response_time || null,
-        logData.status_code || null,
-        logData.error_message || null,
+        logData.response_time ?? null,
+        logData.status_code ?? null,
+        logData.error_message ?? null,
         logData.timestamp,
+        logData.session_id ?? null,
+        logData.device_info ?? null,
       ]
     );
 
@@ -23,14 +25,15 @@ const createLog = async (req, res) => {
 
     if (logData.error_message) {
       await pool.query(
-        'INSERT INTO errors(timestamp, error_message, error_type, api_name, device_info, stack_trace) VALUES($1, $2, $3, $4, $5, $6)',
+        'INSERT INTO errors(timestamp, error_message, error_type, api_name, device_info, stack_trace, session_id) VALUES($1, $2, $3, $4, $5, $6, $7)',
         [
           logData.timestamp,
           logData.error_message,
           'API_ERROR',
           logData.api_name,
-          'Flutter Web',
+          logData.device_info || 'Unknown device',
           logData.error_message,
+          logData.session_id ?? null,
         ]
       );
       console.log("Error stored in DB");
@@ -53,17 +56,17 @@ const createLog = async (req, res) => {
     }
 
     const io = req.app.get('io');
-if (io) {
-  io.emit('log-created');
+    if (io) {
+      io.emit('log-created');
 
-  if (logData.response_time && logData.response_time > 3000) {
-    io.emit('alert-created');
-  }
+      if (logData.response_time && logData.response_time > 3000) {
+        io.emit('alert-created');
+      }
 
-  if (logData.status_code && logData.status_code >= 500) {
-    io.emit('alert-created');
-  }
-}
+      if (logData.status_code && logData.status_code >= 500) {
+        io.emit('alert-created');
+      }
+    }
 
 
     res.json({ message: "Log received successfully" });

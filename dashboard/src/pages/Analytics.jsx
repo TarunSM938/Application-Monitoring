@@ -36,18 +36,29 @@ export default function Analytics() {
   const [data, setData]     = useState(null)
   const [loading, setLoading] = useState(true)
 
+  const fetchAnalytics = async () => {
+    try {
+      const r = await axios.get(`${API}/api/analytics`)
+      setData(r.data)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-  fetchAnalytics();
-  const t = setInterval(fetchAnalytics, 30000);
-  const refresh = () => fetchAnalytics();
+    fetchAnalytics()
+    const t = setInterval(fetchAnalytics, 30000)
+    const refresh = () => fetchAnalytics()
 
-  socket.on('log-created', refresh);
+    socket.on('log-created', refresh)
 
-  return () => {
-    clearInterval(t);
-    socket.off('log-created', refresh);
-  };
-}, []);
+    return () => {
+      clearInterval(t)
+      socket.off('log-created', refresh)
+    }
+  }, [])
 
 
   if (loading) return (

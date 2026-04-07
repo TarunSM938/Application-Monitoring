@@ -21,6 +21,14 @@ const validateLog = [
     .optional({ nullable: true })
     .isString().withMessage('error_message must be a string'),
 
+  body('session_id')
+    .optional({ nullable: true })
+    .isString().withMessage('session_id must be a string'),
+
+  body('device_info')
+    .optional({ nullable: true })
+    .isString().withMessage('device_info must be a string'),
+
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
