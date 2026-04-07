@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell
 } from 'recharts'
+import { socket } from '../socket'
 
 const API = 'http://localhost:5000'
 
@@ -36,13 +37,18 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetch = async () => {
-      try { const r = await axios.get(`${API}/api/analytics`); setData(r.data) }
-      catch (e) { console.error(e) }
-      finally { setLoading(false) }
-    }
-    fetch(); const t = setInterval(fetch, 30000); return () => clearInterval(t)
-  }, [])
+  fetchAnalytics();
+  const t = setInterval(fetchAnalytics, 30000);
+  const refresh = () => fetchAnalytics();
+
+  socket.on('log-created', refresh);
+
+  return () => {
+    clearInterval(t);
+    socket.off('log-created', refresh);
+  };
+}, []);
+
 
   if (loading) return (
     <div className="loading-screen">

@@ -8,6 +8,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer
 } from 'recharts'
+import { socket } from '../socket'
 
 const API = 'http://localhost:5000'
 
@@ -69,7 +70,23 @@ export default function Dashboard() {
     }
   }
 
-  useEffect(() => { fetchAll(); const t = setInterval(fetchAll, 30000); return () => clearInterval(t) }, [])
+  useEffect(() => {
+  fetchAll();
+  const t = setInterval(fetchAll, 30000);
+  const refresh = () => fetchAll();
+
+  socket.on('log-created', refresh);
+  socket.on('alert-created', refresh);
+  socket.on('alert-resolved', refresh);
+
+  return () => {
+    clearInterval(t);
+    socket.off('log-created', refresh);
+    socket.off('alert-created', refresh);
+    socket.off('alert-resolved', refresh);
+  };
+}, []);
+
 
   const chartData = [...logs].reverse().slice(-20).map((l, i) => ({
     name: i + 1,

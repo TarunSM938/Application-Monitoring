@@ -52,6 +52,20 @@ const createLog = async (req, res) => {
       console.log("Alert created: Server error detected");
     }
 
+    const io = req.app.get('io');
+if (io) {
+  io.emit('log-created');
+
+  if (logData.response_time && logData.response_time > 3000) {
+    io.emit('alert-created');
+  }
+
+  if (logData.status_code && logData.status_code >= 500) {
+    io.emit('alert-created');
+  }
+}
+
+
     res.json({ message: "Log received successfully" });
   } catch (err) {
     console.error("DB Error:", err);

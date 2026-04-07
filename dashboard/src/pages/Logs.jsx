@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { RefreshCw, Download, Search, ScrollText, CheckCircle, AlertTriangle, XCircle, Clock } from 'lucide-react'
+import { socket } from '../socket'
 
 const API = 'http://localhost:5000'
 
@@ -32,7 +33,21 @@ export default function Logs() {
     finally { setLoading(false); setTimeout(() => setSpinning(false), 400) }
   }
 
-  useEffect(() => { fetchLogs(); const t = setInterval(fetchLogs, 30000); return () => clearInterval(t) }, [])
+  useEffect(() => {
+  fetchAlerts();
+  const t = setInterval(fetchAlerts, 30000);
+  const refresh = () => fetchAlerts();
+
+  socket.on('alert-created', refresh);
+  socket.on('alert-resolved', refresh);
+
+  return () => {
+    clearInterval(t);
+    socket.off('alert-created', refresh);
+    socket.off('alert-resolved', refresh);
+  };
+}, []);
+
 
   const filtered = logs.filter(l => {
     const txt = search === '' || (l.api_name || '').toLowerCase().includes(search.toLowerCase())

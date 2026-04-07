@@ -6,6 +6,10 @@ const getAlerts = async (req, res) => {
     const result = await pool.query(
       'SELECT * FROM alerts ORDER BY timestamp DESC'
     );
+    const io = req.app.get('io');
+if (io) {
+  io.emit('alert-resolved');
+}
 
     res.json({ alerts: result.rows });
   } catch (err) {
