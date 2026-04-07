@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const { pool } = require("./db/connection");
 const logsRoutes = require("./routes/logs");
 const metricsRoutes = require("./routes/metrics");
 const alertsRoutes = require("./routes/alerts");
@@ -10,16 +11,26 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Use logs routes
+app.get('/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      db: 'connected',
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      db: 'disconnected',
+    });
+  }
+});
+
 app.use('/api/logs', logsRoutes);
-
-// Use metrics routes
 app.use('/api/metrics', metricsRoutes);
-
-// Use alerts routes
 app.use('/api/alerts', alertsRoutes);
-
-// Use analytics routes
 app.use('/api/analytics', analyticsRoutes);
 
 app.listen(5000, () => {

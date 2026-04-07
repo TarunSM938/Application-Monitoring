@@ -1,0 +1,36 @@
+const { body, validationResult } = require('express-validator');
+
+const validateLog = [
+  body('api_name')
+    .notEmpty().withMessage('api_name is required')
+    .isString().withMessage('api_name must be a string'),
+
+  body('timestamp')
+    .notEmpty().withMessage('timestamp is required')
+    .isISO8601().withMessage('timestamp must be a valid ISO8601 date'),
+
+  body('response_time')
+    .optional({ nullable: true })
+    .isNumeric().withMessage('response_time must be a number'),
+
+  body('status_code')
+    .optional({ nullable: true })
+    .isInt().withMessage('status_code must be an integer'),
+
+  body('error_message')
+    .optional({ nullable: true })
+    .isString().withMessage('error_message must be a string'),
+
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: errors.array(),
+      });
+    }
+    next();
+  },
+];
+
+module.exports = validateLog;

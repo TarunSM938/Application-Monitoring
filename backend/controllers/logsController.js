@@ -8,8 +8,7 @@ const createLog = async (req, res) => {
   console.log(JSON.stringify(logData, null, 2));
 
   try {
-    // Insert log data into database using parameterized query
-    const insertResult = await pool.query(
+    await pool.query(
       'INSERT INTO logs(api_name, response_time, status_code, error_message, timestamp) VALUES($1, $2, $3, $4, $5)',
       [
         logData.api_name,
@@ -22,8 +21,6 @@ const createLog = async (req, res) => {
 
     console.log("Log saved to database");
 
-    // If log contains error_message, insert into errors table
-    console.log("Checking error:", logData.error_message);
     if (logData.error_message) {
       await pool.query(
         'INSERT INTO errors(timestamp, error_message, error_type, api_name, device_info, stack_trace) VALUES($1, $2, $3, $4, $5, $6)',
@@ -39,7 +36,6 @@ const createLog = async (req, res) => {
       console.log("Error stored in DB");
     }
 
-    // Check for alert conditions and create alerts
     if (logData.response_time && logData.response_time > 3000) {
       await pool.query(
         'INSERT INTO alerts(timestamp, alert_type, message, severity) VALUES($1, $2, $3, $4)',
@@ -63,14 +59,30 @@ const createLog = async (req, res) => {
   }
 };
 
-// GET - Fetch logs from database
+// GET - Fetch logs from database with pagination
 const getLogs = async (req, res) => {
+  const page = Math.max(parseInt(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 100);
+  const offset = (page - 1) * limit;
+
   try {
-    const result = await pool.query(
-      'SELECT * FROM logs ORDER BY timestamp DESC LIMIT 50'
+    const countResult = await pool.query('SELECT COUNT(*) FROM logs');
+    const logsResult = await pool.query(
+      'SELECT * FROM logs ORDER BY timestamp DESC LIMIT $1 OFFSET $2',
+      [limit, offset]
     );
 
-    res.json({ logs: result.rows });
+    const total = parseInt(countResult.rows[0].count, 10);
+
+    res.json({
+      logs: logsResult.rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (err) {
     console.error("DB Error:", err);
     res.status(500).json({ error: "Database error" });
