@@ -6,7 +6,11 @@ import { socket } from '../socket'
 const API = 'http://localhost:5000'
 
 const getStatus = (log) => {
-  if (log.error_message) return { label: 'Error', color: 'var(--red)', bg: 'var(--red-dim)', Icon: XCircle }
+  if (log.error_message) {
+    if (log.error_type === 'TIMEOUT') return { label: 'Timeout', color: 'var(--yellow)', bg: 'var(--yellow-dim)', Icon: Clock }
+    if (log.error_type === 'BAD_RESPONSE') return { label: 'Bad JSON', color: 'var(--purple)', bg: '#2d1f4d', Icon: AlertTriangle }
+    return { label: 'Error', color: 'var(--red)', bg: 'var(--red-dim)', Icon: XCircle }
+  }
   if (log.response_time > 3000) return { label: 'Critical', color: 'var(--red)', bg: 'var(--red-dim)', Icon: AlertTriangle }
   if (log.response_time > 1000) return { label: 'Slow', color: 'var(--yellow)', bg: 'var(--yellow-dim)', Icon: Clock }
   return { label: 'OK', color: 'var(--green)', bg: 'var(--green-dim)', Icon: CheckCircle }
@@ -45,36 +49,53 @@ export default function Logs() {
     const refresh = () => fetchLogs()
 
     socket.on('log-created', refresh)
+    socket.on('error-created', refresh)
 
     return () => {
       clearInterval(t)
       socket.off('log-created', refresh)
+      socket.off('error-created', refresh)
     }
   }, [])
 
-  const filtered = logs.filter((l) => {
+  const filtered = logs.filter((log) => {
     const term = search.toLowerCase()
-    const txt =
+    const textMatch =
       search === '' ||
-      (l.api_name || '').toLowerCase().includes(term) ||
-      (l.trace_id || '').toLowerCase().includes(term)
+      (log.api_name || '').toLowerCase().includes(term) ||
+      (log.trace_id || '').toLowerCase().includes(term) ||
+      (log.error_type || '').toLowerCase().includes(term)
 
-    const st =
-      statusF === 'error' ? !!l.error_message :
-      statusF === 'slow' ? (l.response_time > 1000 && !l.error_message) :
-      statusF === 'ok' ? (!l.error_message && l.response_time <= 1000) : true
-    return txt && st
+    const statusMatch =
+      statusF === 'error' ? !!log.error_message
+        : statusF === 'slow' ? (log.response_time > 1000 && !log.error_message)
+          : statusF === 'ok' ? (!log.error_message && log.response_time <= 1000)
+            : true
+
+    return textMatch && statusMatch
   })
 
   const exportCSV = () => {
-    const hdr = ['ID', 'Timestamp', 'API Name', 'Trace ID', 'Response Time (ms)', 'Status Code', 'Session ID', 'Device Info', 'Error Message']
-    const rows = filtered.map((l) => [l.id, l.timestamp, l.api_name, l.trace_id ?? '', l.response_time ?? '', l.status_code ?? '', l.session_id ?? '', l.device_info ?? '', l.error_message ?? ''])
-    const csv = [hdr, ...rows].map((r) => r.map((v) => `"${v}"`).join(',')).join('\n')
-    const a = Object.assign(document.createElement('a'), {
+    const headers = ['ID', 'Timestamp', 'API Name', 'Trace ID', 'Response Time (ms)', 'Status Code', 'Session ID', 'Device Info', 'Error Type', 'Error Message']
+    const rows = filtered.map((log) => [
+      log.id,
+      log.timestamp,
+      log.api_name,
+      log.trace_id ?? '',
+      log.response_time ?? '',
+      log.status_code ?? '',
+      log.session_id ?? '',
+      log.device_info ?? '',
+      log.error_type ?? '',
+      log.error_message ?? '',
+    ])
+
+    const csv = [headers, ...rows].map((row) => row.map((value) => `"${value}"`).join(',')).join('\n')
+    const anchor = Object.assign(document.createElement('a'), {
       href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
       download: `logs_${Date.now()}.csv`,
     })
-    a.click()
+    anchor.click()
   }
 
   if (loading) return (
@@ -108,25 +129,25 @@ export default function Logs() {
           <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
           <input
             className="input"
-            placeholder="Search API name or trace ID..."
+            placeholder="Search API name, trace ID, or error type..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ paddingLeft: 32, width: 260 }}
+            style={{ paddingLeft: 32, width: 280 }}
           />
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          {FILTERS.map((f) => (
+          {FILTERS.map((filter) => (
             <button
-              key={f.id}
-              className={`btn ${statusF === f.id ? 'btn-primary' : 'btn-ghost'}`}
+              key={filter.id}
+              className={`btn ${statusF === filter.id ? 'btn-primary' : 'btn-ghost'}`}
               style={{ padding: '7px 14px' }}
-              onClick={() => setStatusF(f.id)}
+              onClick={() => setStatusF(filter.id)}
             >
-              {f.id === 'ok' && <CheckCircle size={13} />}
-              {f.id === 'slow' && <Clock size={13} />}
-              {f.id === 'error' && <XCircle size={13} />}
-              {f.id === 'all' && <ScrollText size={13} />}
-              {f.label}
+              {filter.id === 'ok' && <CheckCircle size={13} />}
+              {filter.id === 'slow' && <Clock size={13} />}
+              {filter.id === 'error' && <XCircle size={13} />}
+              {filter.id === 'all' && <ScrollText size={13} />}
+              {filter.label}
             </button>
           ))}
         </div>
@@ -137,13 +158,13 @@ export default function Logs() {
           <thead>
             <tr>
               <th>ID</th><th>Timestamp</th><th>API Name</th><th>Trace</th>
-              <th>Response</th><th>Status Code</th><th>Session</th><th>Device</th><th>State</th><th>Error</th>
+              <th>Response</th><th>Status Code</th><th>Session</th><th>Device</th><th>State</th><th>Error Type</th><th>Error</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={10}>
+                <td colSpan={11}>
                   <div className="empty">
                     <div className="empty-icon"><ScrollText size={20} /></div>
                     <p>No logs found. Make API calls from the Flutter app.</p>
@@ -151,38 +172,41 @@ export default function Logs() {
                 </td>
               </tr>
             ) : filtered.map((log, i) => {
-              const s = getStatus(log)
+              const status = getStatus(log)
               return (
                 <tr key={log.id || i}>
                   <td className="mono" style={{ color: 'var(--text3)' }}>#{log.id}</td>
                   <td className="mono" style={{ color: 'var(--text3)', whiteSpace: 'nowrap' }}>
-                    {log.timestamp ? new Date(log.timestamp).toLocaleString() : '—'}
+                    {log.timestamp ? new Date(log.timestamp).toLocaleString() : '-'}
                   </td>
                   <td style={{ color: 'var(--blue)', fontWeight: 600 }}>{log.api_name}</td>
                   <td className="mono" style={{ color: 'var(--text2)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                       <GitBranch size={12} />
-                      {log.trace_id ?? '—'}
+                      {log.trace_id ?? '-'}
                     </span>
                   </td>
                   <td className="mono" style={{ color: log.response_time > 1000 ? 'var(--yellow)' : 'var(--green)', fontWeight: 600 }}>
-                    {log.response_time != null ? `${log.response_time}ms` : '—'}
+                    {log.response_time != null ? `${log.response_time}ms` : '-'}
                   </td>
-                  <td className="mono" style={{ color: 'var(--text2)' }}>{log.status_code ?? '—'}</td>
+                  <td className="mono" style={{ color: 'var(--text2)' }}>{log.status_code ?? '-'}</td>
                   <td className="mono" style={{ color: 'var(--text2)', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {log.session_id ?? '—'}
+                    {log.session_id ?? '-'}
                   </td>
                   <td style={{ color: 'var(--text2)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>
-                    {log.device_info ?? '—'}
+                    {log.device_info ?? '-'}
                   </td>
                   <td>
-                    <span className="badge" style={{ background: s.bg, color: s.color }}>
-                      <s.Icon size={10} strokeWidth={2.5} />
-                      {s.label}
+                    <span className="badge" style={{ background: status.bg, color: status.color }}>
+                      <status.Icon size={10} strokeWidth={2.5} />
+                      {status.label}
                     </span>
                   </td>
-                  <td style={{ color: 'var(--red)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>
-                    {log.error_message ?? <span style={{ color: 'var(--text3)' }}>—</span>}
+                  <td className="mono" style={{ color: 'var(--text2)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {log.error_type ?? '-'}
+                  </td>
+                  <td style={{ color: 'var(--red)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12 }}>
+                    {log.error_message ?? '-'}
                   </td>
                 </tr>
               )

@@ -22,6 +22,14 @@ const validateLog = [
     .optional({ nullable: true })
     .isString().withMessage('error_message must be a string'),
 
+  body('error_type')
+    .optional({ nullable: true })
+    .isString().withMessage('error_type must be a string'),
+
+  body('stack_trace')
+    .optional({ nullable: true })
+    .isString().withMessage('stack_trace must be a string'),
+
   body('session_id')
     .optional({ nullable: true })
     .isString().withMessage('session_id must be a string'),

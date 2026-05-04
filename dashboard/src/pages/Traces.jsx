@@ -5,7 +5,7 @@ import { socket } from '../socket'
 
 const API = 'http://localhost:5000'
 
-const formatTime = (value) => value ? new Date(value).toLocaleString() : '—'
+const formatTime = (value) => value ? new Date(value).toLocaleString() : '-'
 
 export default function Traces() {
   const [traceId, setTraceId] = useState('')
@@ -67,9 +67,11 @@ export default function Traces() {
     }
 
     socket.on('log-created', refresh)
+    socket.on('error-created', refresh)
 
     return () => {
       socket.off('log-created', refresh)
+      socket.off('error-created', refresh)
     }
   }, [selectedTrace])
 
@@ -171,7 +173,7 @@ export default function Traces() {
             <table>
               <thead>
                 <tr>
-                  <th>Timestamp</th><th>API</th><th>Status</th><th>Response</th><th>Session</th><th>Device</th><th>Error</th>
+                  <th>Timestamp</th><th>API</th><th>Status</th><th>Response</th><th>Session</th><th>Device</th><th>Error Type</th><th>Error</th>
                 </tr>
               </thead>
               <tbody>
@@ -179,13 +181,14 @@ export default function Traces() {
                   <tr key={log.id || index}>
                     <td className="mono" style={{ color: 'var(--text3)', whiteSpace: 'nowrap' }}>{formatTime(log.timestamp)}</td>
                     <td style={{ color: 'var(--blue)', fontWeight: 600 }}>{log.api_name}</td>
-                    <td className="mono" style={{ color: 'var(--text2)' }}>{log.status_code ?? '—'}</td>
+                    <td className="mono" style={{ color: 'var(--text2)' }}>{log.status_code ?? '-'}</td>
                     <td className="mono" style={{ color: log.response_time > 1000 ? 'var(--yellow)' : 'var(--green)' }}>
-                      {log.response_time != null ? `${log.response_time}ms` : '—'}
+                      {log.response_time != null ? `${log.response_time}ms` : '-'}
                     </td>
-                    <td className="mono" style={{ color: 'var(--text2)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.session_id ?? '—'}</td>
-                    <td style={{ color: 'var(--text2)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.device_info ?? '—'}</td>
-                    <td style={{ color: 'var(--red)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.error_message ?? '—'}</td>
+                    <td className="mono" style={{ color: 'var(--text2)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.session_id ?? '-'}</td>
+                    <td style={{ color: 'var(--text2)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.device_info ?? '-'}</td>
+                    <td className="mono" style={{ color: 'var(--text2)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.error_type ?? '-'}</td>
+                    <td style={{ color: 'var(--red)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.error_message ?? '-'}</td>
                   </tr>
                 ))}
               </tbody>

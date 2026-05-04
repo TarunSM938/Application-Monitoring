@@ -4,6 +4,7 @@ import {
   Bell, BellOff, CheckCircle, AlertTriangle, AlertOctagon,
   Clock, RefreshCw, Lightbulb, ShieldCheck, Zap
 } from 'lucide-react'
+import { socket } from '../socket'
 
 const API = 'http://localhost:5000'
 
@@ -35,7 +36,20 @@ export default function Alerts() {
     finally { setResolving(null) }
   }
 
-  useEffect(() => { fetchAlerts(); const t = setInterval(fetchAlerts, 30000); return () => clearInterval(t) }, [])
+  useEffect(() => {
+    fetchAlerts()
+    const t = setInterval(fetchAlerts, 30000)
+    const refresh = () => fetchAlerts()
+
+    socket.on('alert-created', refresh)
+    socket.on('alert-resolved', refresh)
+
+    return () => {
+      clearInterval(t)
+      socket.off('alert-created', refresh)
+      socket.off('alert-resolved', refresh)
+    }
+  }, [])
 
   const active   = alerts.filter(a => !a.resolved)
   const resolved = alerts.filter(a =>  a.resolved)

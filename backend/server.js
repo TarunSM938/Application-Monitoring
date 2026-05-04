@@ -11,6 +11,7 @@ const logsRoutes = require("./routes/logs");
 const metricsRoutes = require("./routes/metrics");
 const alertsRoutes = require("./routes/alerts");
 const analyticsRoutes = require("./routes/analytics");
+const demoRoutes = require("./routes/demo");
 
 const app = express();
 const server = http.createServer(app);
@@ -43,6 +44,7 @@ app.use('/api/logs', logsRoutes);
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/demo', demoRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
